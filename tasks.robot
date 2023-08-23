@@ -5,17 +5,16 @@ Documentation       Orders robots from RobotSpareBin Industries Inc.
 ...                 Embeds the screenshot of the robot to the PDF receipt.
 ...                 Creates ZIP archive of the receipts and the images.
 
-Library             Collections
-Library             RPA.Browser.Selenium    auto_close=${FALSE}
-Library             RPA.Desktop
-Library             RPA.FileSystem
-Library             RPA.HTTP
-Library             RPA.PDF
-Library             RPA.Tables
-Library    String
+Library    Collections
 Library    RPA.Archive
-
-
+Library    RPA.Browser.Selenium    auto_close=${FALSE}
+Library    RPA.Desktop
+Library    RPA.FileSystem
+Library    RPA.HTTP
+Library    RPA.PDF
+Library    RPA.Tables
+Library    RPA.RobotLogListener
+Library    String
 
 *** Variables ***
 ${START_PATH}=      https://robotsparebinindustries.com/#/robot-order
@@ -26,14 +25,13 @@ ${RECEIPTS_PATH}=   ${OUTPUT_DIR}${/}receipts
 
 *** Tasks ***
 Order robots from RobotSpareBin Industries Inc
+    Mute Run On Failure    Fill the form
     Open the robot order website
     ${table}=    Get orders
-    # Log    ${table}
     ${orders}=    Table head    ${table}    as_list=True
     FOR    ${row}    IN    @{orders}
         Close the annoying modal
         ${Order number}=    Fill the form    ${row}
-        #Download and store the result
         ${pdf}=    Store the receipt as a PDF file    ${row}[0]
         ${screenshot}=    Take a screenshot of the robot    ${row}[0]
         Embed the robot screenshot to the receipt PDF file    ${screenshot}    ${pdf}
@@ -48,13 +46,12 @@ Open the robot order website
     Open Available Browser    ${START_PATH}
 
 Get orders
-    # Download    ${EXCEL_FILE_URL}    target_file=${DOWNLOAD_PATH}    overwrite=True
-    # Wait Until Created    ${DOWNLOAD_PATH}
+    Download    ${EXCEL_FILE_URL}    target_file=${DOWNLOAD_PATH}    overwrite=True
+    Wait Until Created    ${DOWNLOAD_PATH}
     ${orders}=    Read table from CSV    ${DOWNLOAD_PATH}    header=True    delimiters=','
     RETURN    ${orders}
 
 Close the annoying modal
-    # Click Button When Visible    //../button[.="OK"]
     ${Button_OK}=    Convert To String    //../button[.="OK"]
     Click Button When Visible    ${Button_OK}
 
@@ -63,16 +60,11 @@ Click Order Button
     ${Button_Order}=    Convert To String    //../button[.="Order"]
     Click Button When Visible    ${Button_Order}
     ${Order number}=    Get WebElement  xpath://p[contains(@class,'badge-success')]
-    #Wait Until Page Contains    "Receipt"    2
-        #${Error_Message}=    Get WebElement    xpath://div[contains(@class,'alert-danger')]
-        #${Receipt}=    Get WebElement    //div[@id='receipt']
 
 
 Fill the form
     [Arguments]    @{row}
-    # ${Order number}    ${Head}    ${Body}    ${Legs}    ${Address}
-    # Log    ${row}[0][0]
-
+    
     # get robot values from file
     ${Value_Order_number}=    Get From List    @{row}    0
     ${Value_Head}=    Get From List    @{row}    1
@@ -102,16 +94,13 @@ Fill the form
     ${Image_Body}=    Get WebElement    xpath://img[@alt='Body']
     ${Image_Legs}=    Get WebElement    xpath://img[@alt='Legs']
 
-    # wait for the image and screenshot
+    # wait for the image
     Wait Until Element Is Visible    ${Image_Head}
     Wait Until Element Is Visible    ${Image_Body}
     Wait Until Element Is Visible    ${Image_Legs}
-    # Wait For Element    ${Image_Robot_Preview}
-
+    
     # retry click the order button until succeeds
     Wait Until Keyword Succeeds    3    2    Click Order Button
-        # <p class="form-text text-muted">Requests can be submitted without a body, but not in our store. Pick up a body!</p>
-        # <div id="receipt" class="alert alert-success" role="alert"><h3>Receipt</h3><div>2023-07-12T09:51:04.675Z</div><p class="badge badge-success">RSB-ROBO-ORDER-QLBHT1A6W</p><p>1</p><div id="parts" class="alert alert-light" role="alert"><div>Head: 1</div><div>Body: 1</div><div>Legs: 1</div></div><p>Thank you for your order! We will ship your robot to you as soon as our warehouse robots gather the parts you ordered! You will receive your robot in no time!</p></div>
     ${Order number}=    Get WebElement  xpath://p[contains(@class,'badge-success')]
     RETURN    Get Text     ${Order number}
 
